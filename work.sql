@@ -312,8 +312,18 @@ EXECUTE format('CREATE TABLE %I (
     courseid varchar(7) primary key,
     sem integer not null,
     year integer not null,
-    status varchar(50) not null
+    status varchar(50) not null,
+    secid integer not null
     );', studentid || '_h');
 END;
 $$;
-
+/*
+-- History/Request table of teacher
+EXECUTE format('CREATE TABLE %I (
+    treacherid varchar(7),
+    courseid varchar(7) primary key,
+    sem integer not null,
+    year integer not null,
+    
+    );', studentid || '_h');
+    */
