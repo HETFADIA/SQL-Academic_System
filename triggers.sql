@@ -21,43 +21,44 @@ primary key(courseid, teacherid, secid)
 
 -- History/Request table of instructor request
 EXECUTE format('CREATE TABLE %I (
-    courseid varchar(7) primary key,
+    courseid varchar(7),
     sem integer not null,
     year integer not null,
     status varchar(50) not null,
     secid integer not null,
     entry_no varchar(10)
-    );', studentid || '_h');
+    primary key(courseid,secid,entry_no)
+    );', instructor || '_h');
 
 -- History/Request table of batch advisor
 EXECUTE format('CREATE TABLE %I (
-    courseid varchar(7) primary key,
+    courseid varchar(7),
     sem integer not null,
     year integer not null,
     status varchar(50) not null,
     secid integer not null,
     entry_no varchar(10)
-    );', studentid || '_h');
+    primary key(courseid,secid,entry_no)
+    );', batch_advisor || '_h');
 
     table of dean for request/history
 EXECUTE format('CREATE TABLE %I (
-    courseid varchar(7) primary key,
+    courseid varchar(7),
     sem integer not null,
     year integer not null,
     status varchar(50) not null,
     secid integer not null,
     entry_no varchar(10)
-    );', studentid || '_h');
+    primary key(courseid,secid,entry_no)
+    );', 'dean' || '_h');
     */
 CREATE OR REPLACE FUNCTION student_request()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
 AS $$
 DECLARE
-_instructorid integer;
 BEGIN
-select instructorid into _instructorid from course_offerings where NEW.courseid=courseid and NEW.secid=secid;
-execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L)',  _instructorid || '_h',NEW.courseid,NEW.sem,NEW.year,'pending instructor approved',NEW.secid,current_user);
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  teacherid || '_h',NEW.courseid,NEW.sem,NEW.year,'pending instructor approved',NEW.secid,current_user);
 END;
 $$;
 
@@ -85,12 +86,12 @@ WHERE courseid=NEW.courseid;
 */
 if NEW.status='Y' then
 -- 'instructor approved '
-batchadvisor := substr(entry_no, 1, 7);
-execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L)',  batchadvisor || '_h',NEW.courseid,NEW.sem,NEW.year,NEW.secid,'pending batch advisor approval');
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  entry_no || '_h', 'pending batch advisor approval',NEW.courseid);
-;
+batchadvisor := substr(NEW.entry_no, 1, 7);
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L);',  batchadvisor || '_h',NEW.courseid,NEW.sem,NEW.year,'pending batch advisor approval',NEW.secid,NEW.entry_no);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'pending batch advisor approval',NEW.courseid);
+
 ELSIF NEW.status='N' THEN
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  entry_no || '_h', 'instructor declined',NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'instructor declined',NEW.courseid);
 END if;
 END;
 $$;
@@ -106,21 +107,23 @@ RETURNS TRIGGER
 LANGUAGE PLPGSQL
 AS $$
 DECLARE
-_instructorid integer;
+_teacherid integer;
 batchadvisorid varchar(7);
+
 BEGIN
-batchadvisor := substr(entry_no, 1, 7);
-select instructorid into _instructorid from course_offerings where NEW.courseid=courseid and NEW.secid=secid;
+
+batchadvisor := substr(NEW.entry_no, 1, 7);
+select teacherid into _teacherid from course_offerings where NEW.courseid=courseid and NEW.secid=secid and NEW.entry_no=course_offerings.entry_no;
 if NEW.status='Y' then
 -- 'instructor approved '
 
-execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L)',  'dean' || '_h',NEW.courseid,NEW.sem,NEW.year,NEW.secid,'pending dean approval');
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  entry_no || '_h', 'pending dean approval',NEW.courseid);
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  _instructorid || '_h', 'pending dean approval',NEW.courseid);
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  'dean' || '_h',NEW.courseid,NEW.sem,NEW.year,'pending dean approval',NEW.secid,NEW.entry_no);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'pending dean approval',NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  _teacherid || '_h', 'pending dean approval',NEW.courseid);
 ELSIF NEW.status='N' THEN
 
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  entry_no || '_h', 'batch advisor declined',NEW.courseid);
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  _instructorid || '_h', 'batch advisor declined',NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'batch advisor declined',NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  _teacherid || '_h', 'batch advisor declined',NEW.courseid);
 END IF;
 END;
 $$;
@@ -136,20 +139,22 @@ RETURNS TRIGGER
 LANGUAGE PLPGSQL
 AS $$
 DECLARE
-_instructorid integer;
+_teacherid integer;
 batchadvisorid varchar(7);
+
 BEGIN
-batchadvisor := substr(entry_no, 1, 7);
-select instructorid into _instructorid from course_offerings where NEW.courseid=courseid and NEW.secid=secid;
+
+batchadvisor := substr(NEW.entry_no, 1, 7);
+select teacherid into _teacherid from course_offerings where NEW.courseid=courseid and NEW.secid=secid and NEW.entry_no=course_offerings.entry_no;
 if NEW.status='Y' THEN
 -- 'instructor approved '
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  batchadvisor || '_h', 'enrolled',NEW.courseid);
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  _instructorid || '_h', 'enrolled',NEW.courseid);
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  entry_no || '_h', 'enrolled',NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  batchadvisor || '_h', 'enrolled',NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  _teacherid || '_h', 'enrolled',NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'enrolled',NEW.courseid);
 ELSIF NEW.status='N' THEN
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  batchadvisor || '_h', 'dean declined',NEW.courseid);
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  _instructorid || '_h', 'dean declined',NEW.courseid);
-execute format('UPDATE %I SET status=%L WHERE courseid=%L',  entry_no || '_h', 'dean declined',NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  batchadvisor || '_h', 'dean declined',NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  _teacherid || '_h', 'dean declined',NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'dean declined',NEW.courseid);
 END IF;
 END;
 $$;
