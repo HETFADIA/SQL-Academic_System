@@ -1,71 +1,3 @@
-create table course_catalog(
-courseid varchar(7) primary key,
-L real not null,
-T real not null,
-P real not null,
-S real not null,
-C real not null
-);
-
-insert into course_catalog values('CS301', 3, 1, 2, 6, 4);
-insert into course_catalog values('CS303', 3, 1, 2, 6, 4);
-insert into course_catalog values('CS201', 3, 1, 2, 6, 4);
-insert into course_catalog values('CS203', 3, 1, 3, 6, 4);
-insert into course_catalog values('CS202', 3, 1, 2, 6, 4);
-insert into course_catalog values('CS204', 3, 1, 2, 6, 4);
-insert into course_catalog values('GE103', 3, 0, 3, 7.5, 4.5);
-insert into course_catalog values('CS101', 3, 1, 0, 5, 3);
-insert into course_catalog values('MA101', 3, 1, 0, 5, 3);
-insert into course_catalog values('CS302', 3, 1, 0, 5, 3);
-
-select * from course_catalog;
-
-create table pre_requisite(
-courseid varchar(7) not null,
-pre_req varchar(7) not null
-);
-
-insert into pre_requisite values('CS201', 'GE103');
-insert into pre_requisite values('CS202', 'CS201');
-insert into pre_requisite values('CS302', 'CS101');
-insert into pre_requisite values('CS302', 'CS201');
-insert into pre_requisite values('CS204', 'CS203');
-insert into pre_requisite values('CS301', 'CS201');
-insert into pre_requisite values('CS302', 'CS204');
-insert into pre_requisite values('CS302', 'CS201');
-
-select * from pre_requisite;
-
-create table course_offerings(
-courseid varchar(7) not null,
-teacherid integer not null,
-secid integer not null,
-sem intger not null,
-year integer not null,
-cg real,
-primary key(courseid, teacherid, secid)
-);
-
-CREATE OR REPLACE FUNCTION create_course_sec_table()
-RETURNS TRIGGER
-LANGUAGE PLPGSQL
-AS $$
-DECLARE
-seat record;
-BEGIN
-EXECUTE format('CREATE TABLE %I (pnr bigint primary key, booking_agent varchar(256));', 'bookings_' || NEW.train_id::text || '_' || to_char(NEW.date, 'yyyy_mm_dd'));
-EXECUTE format('CREATE TABLE %I (coach char(5), berth integer, primary key(coach, berth));', 'empty_seats_' || NEW.train_id::text || '_' || to_char(NEW.date, 'yyyy_mm_dd'));
-RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER insert_course_offering
-BEFORE INSERT
-ON course_offerings
-FOR EACH ROW
-EXECUTE PROCEDURE create_course_sec_table();
-
-
 
 /*
 CREATE OR REPLACE FUNCTION random_check_function()
@@ -85,6 +17,13 @@ cnt := cnt + cnt2;
 RETURN cnt;
 END;
 $$;
+
+SELECT 'DROP FUNCTION' || oid::regprocedure
+FROM   pg_proc
+WHERE  proname = 'my_function_name'  -- name without schema-qualification
+AND    pg_function_is_visible(oid);  -- restrict to current search_path
+
+GRANT ALL ON PROCEDURE load_grade TO ab;
 
 CREATE OR REPLACE FUNCTION nicenice(courseid varchar(7))
 RETURNS TABLE(
@@ -169,10 +108,30 @@ return den;
 END;
 $$;
 
-CREATE TABLE current_ay(
-    sem integer,
-    year integer
-);
+-- CREATE TABLE current_ay(
+--     sem integer,
+--     year integer
+-- );
+
+CREATE OR REPLACE FUNCTION yearsem()
+RETURNS RECORD
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+ret record;
+BEGIN
+select extract(year from now()) as year, extract(month from now()) as sem into ret;
+
+if ret.sem <=6 then
+ret.sem=2;
+ret.year=ret.year-1;
+else
+ret.sem=1;
+end if;
+
+return ret;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION lasttwosemcredit()
 RETURNS real
@@ -185,8 +144,9 @@ avg_credit real;
 sem_c integer;
 year_c integer;
 BEGIN
-select (sem,year) into (sem_c,year_c) from current_ay;
-
+-- select (sem,year) into (sem_c,year_c) from current_ay;
+-- sem_c and year_c from current time
+select yearsem() into (year_c, sem_c);
 
 -- going to the prev semester courses
 if sem_c=2 then 
@@ -241,13 +201,31 @@ insert into postgres_t values('CS303',4,1,2021,7);
 --     grade integer not null
 --     );', studentid || '_t');
 
+/*
+time table
+1 to 5 for mon to friday
+time slot
+1 for 9 to 10
+2 for 10 to 11
+3 for 11 to 12
+4 for 12 to 1
+5 for 1 to 2
+...
 
+*/
+CREATE TABLE time_table_slot(
+    courseid varchar(7),
+    slot integer
+);
 CREATE OR REPLACE FUNCTION check_enrollment()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
 AS $$
 DECLARE
 PR record;
+avg_last_two_sem_credit real;
+this_sem_credit real;
+this_course_credit real;
 BEGIN
 --execute format('INSERT INTO %I VALUES(%L)',  current_user || '_e', courseid);
 -- NEW.courseid, course offering table
@@ -271,8 +249,17 @@ if substr(current_user, 1, 7) not in (select course_batches.batch from course_ba
 raise exception 'Course !!';
 end if;
 
+-- timetable
 
-
+--1.25 rule
+select lasttwosemcredit() into avg_last_two_sem_credit;
+EXECUTE format('select sum(credits) from %I where sem=%L and year=%L;', current_user||'_t', sem_c, year_c) into this_sem_credit;
+select credits into this_course_credit from course_catalog where courseid = NEW.courseid;
+this_sem_credit := this_sem_credit + this_course_credit;
+avg_last_two_sem_credit := 1.25 * avg_last_two_sem_credit;
+if this_sem_credit > avg_last_two_sem_credi then
+raise exception 'Credit Limit Exceeded!!';
+end if;
 RETURN NEW;
 END;
 $$;
@@ -311,19 +298,10 @@ EXECUTE format('CREATE TABLE %I (
 EXECUTE format('CREATE TABLE %I (
     courseid varchar(7) primary key,
     sem integer not null,
+    secid integer,
     year integer not null,
-    status varchar(50) not null,
-    secid integer not null
+    status varchar(50) not null
     );', studentid || '_h');
 END;
 $$;
-/*
--- History/Request table of teacher
-EXECUTE format('CREATE TABLE %I (
-    treacherid varchar(7),
-    courseid varchar(7) primary key,
-    sem integer not null,
-    year integer not null,
-    
-    );', studentid || '_h');
-    */
+
