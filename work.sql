@@ -1,4 +1,66 @@
+CREATE TABLE time_table(
+    courseid varchar(7) not null,
+    slot integer not null,
+    PRIMARY KEY(courseid,slot)
+);
+-- insert into course_catalog values('cs301', 3, 1, 2, 6, 4);
+-- insert into course_catalog values('cs303', 3, 1, 2, 6, 4);
+-- insert into course_catalog values('cs201', 3, 1, 2, 6, 4);
+-- insert into course_catalog values('cs203', 3, 1, 3, 6, 4);
+-- insert into course_catalog values('cs202', 3, 1, 2, 6, 4);
+-- insert into course_catalog values('cs204', 3, 1, 2, 6, 4);
+-- insert into course_catalog values('ge103', 3, 0, 3, 7.5, 4.5);
+-- insert into course_catalog values('cs101', 3, 1, 0, 5, 3);
+-- insert into course_catalog values('ma101', 3, 1, 0, 5, 3);
+-- insert into course_catalog values('cs302', 3, 1, 0, 5, 3);
+insert into time_table values('cs301',11);
+insert into time_table values('cs301',12);
+insert into time_table values('cs301',13);
+insert into time_table values('cs301',14);
 
+insert into time_table values('cs303',15);
+insert into time_table values('cs303',16);
+insert into time_table values('cs303',17);
+insert into time_table values('cs303',18);
+
+insert into time_table values('cs201',19);
+insert into time_table values('cs201',21);
+insert into time_table values('cs201',22);
+insert into time_table values('cs201',23);
+
+insert into time_table values('cs203',24);
+insert into time_table values('cs203',25);
+insert into time_table values('cs203',26);
+insert into time_table values('cs203',27);
+
+insert into time_table values('cs202',11);
+insert into time_table values('cs202',28);
+insert into time_table values('cs202',29);
+insert into time_table values('cs202',30);
+
+insert into time_table values('cs204',31);
+insert into time_table values('cs204',32);
+insert into time_table values('cs204',33);
+insert into time_table values('cs204',34);
+
+insert into time_table values('ge103',31);
+insert into time_table values('ge103',35);
+insert into time_table values('ge103',36);
+
+insert into time_table values('cs101',37);
+insert into time_table values('cs101',38);
+insert into time_table values('cs101',39);
+insert into time_table values('cs101',40);
+
+insert into time_table values('ma101',41);
+insert into time_table values('ma101',42);
+insert into time_table values('ma101',43);
+insert into time_table values('ma101',44);
+
+insert into time_table values('cs302',45);
+insert into time_table values('cs302',46);
+insert into time_table values('cs302',47);
+insert into time_table values('cs302',48);
 /*
 CREATE OR REPLACE FUNCTION random_check_function()
 RETURNS real
@@ -60,11 +122,9 @@ $$;
 -- xyz(course); -> (current_user)
 --(2019CSB1119_T), (2019CSB1119_E), ...
 
-CREATE TABLE postgres_e(
-    courseid varchar(7) primary key
-);
 
-CREATE OR REPLACE FUNCTION enroll(courseid varchar(7))
+
+CREATE OR REPLACE FUNCTION enroll(courseid varchar(7),secid integer)
 RETURNS void
 LANGUAGE PLPGSQL
 AS $$
@@ -72,7 +132,7 @@ DECLARE
 ret record;
 BEGIN
 select yearsem() into ret;
-execute format('INSERT INTO %I VALUES(%L, %L, %L)',  current_user || '_e', courseid, ret.year, ret.sem);
+execute format('INSERT INTO %I VALUES(%L, %L, %L,%L)',  current_user || '_e', courseid, ret.year, ret.sem,secid);
 END;
 $$;
 
@@ -273,7 +333,7 @@ end if;
 end loop;
 
 -- 2019csb1119 -> 2019csb
-if substr(current_user, 1, 7) not in (select course_batches.batch from course_batches where course_batches.courseid = NEW.courseid) then
+if substr(current_user, 1, 7) not in (select course_batches.batch from course_batches where course_batches.courseid = NEW.courseid and course_batches.secid=NEW.secid) then
 raise exception 'Course !!';
 end if;
 
@@ -321,6 +381,7 @@ EXECUTE format('CREATE TABLE %I (
     courseid varchar(7),
     sem integer not null,
     year integer not null,
+    secid integer not null,
     primary key(courseid, sem, year)
     );', studentid || '_e');
 -- History/Request table
