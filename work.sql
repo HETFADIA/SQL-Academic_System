@@ -68,8 +68,11 @@ CREATE OR REPLACE FUNCTION enroll(courseid varchar(7))
 RETURNS void
 LANGUAGE PLPGSQL
 AS $$
+DECLARE
+ret record;
 BEGIN
-execute format('INSERT INTO %I VALUES(%L)',  current_user || '_e', courseid);
+select yearsem() into ret;
+execute format('INSERT INTO %I VALUES(%L, %L, %L)',  current_user || '_e', courseid, ret.year, ret.sem);
 END;
 $$;
 

@@ -126,11 +126,133 @@ $$;
 
 --------------------------------------------------------------------------------------------------------
 
-create table course_catalog(
-courseid varchar(7) primary key,
-L real not null,
-T real not null,
-P real not null,
-S real not null,
-C real not null
+create table dean_h(
+courseid varchar(7),
+sem integer not null,
+year integer not null,
+status varchar(50) not null,
+secid integer not null,
+entry_no varchar(10),
+primary key(courseid, entry_no)
 );
+
+create table "2019csb_h"{
+    
+}
+
+-- create table batch_h(
+
+-- );
+
+-- create table teacherid_h(
+
+-- );
+
+CREATE OR REPLACE FUNCTION student_request()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS $$
+BEGIN
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  teacherid || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.secid, current_user);
+return NEW;
+END;
+$$;
+
+-- add request to instrcutor table
+CREATE TRIGGER student_request
+BEFORE INSERT
+ON postgres_h -- studentid_h
+FOR EACH ROW
+EXECUTE PROCEDURE student_request();
+
+CREATE OR REPLACE FUNCTION teacher_request()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+batchadvisorid varchar(8);
+BEGIN
+
+if NEW.status = 'Y' then
+-- 'instructor approved'
+batchadvisor := substr(NEW.entry_no, 1, 7);
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L);',  batchadvisor || '_h', NEW.courseid, NEW.sem, NEW.year,'NA', NEW.secid, NEW.entry_no);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'pending batch advisor approval', NEW.courseid);
+
+ELSIF NEW.status = 'N' then
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'instructor declined', NEW.courseid);
+END if;
+return NEW;
+END;
+$$;
+
+CREATE TRIGGER teacher_request
+AFTER UPDATE
+ON teacherid_h -- change
+FOR EACH ROW
+EXECUTE PROCEDURE teacher_request();
+
+
+
+CREATE OR REPLACE FUNCTION batch_advisor_request()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+-- _teacherid integer;
+batchadvisorid varchar(7);
+
+BEGIN
+
+batchadvisor := substr(NEW.entry_no, 1, 7);
+if NEW.status = 'Y' then
+-- 'batch advisor approved '
+
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  'dean' || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.secid, NEW.entry_no);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'pending dean approved', NEW.courseid);
+
+ELSIF NEW.status = 'N' THEN
+
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'batch advisor declined', NEW.courseid);
+
+END IF;
+return NEW;
+END;
+$$;
+
+CREATE TRIGGER batch_advisor_request
+AFTER UPDATE
+ON batchadvisor_h -- change
+FOR EACH ROW
+EXECUTE PROCEDURE batch_advisor_request();
+
+
+
+CREATE OR REPLACE FUNCTION to_dean_request()
+RETURNS TRIGGER
+LANGUAGE PLPGSQL
+AS $$
+
+BEGIN
+
+if NEW.status='Y' then
+-- dean approved
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'enrolled', NEW.courseid);
+-- also insert this into enrollment table
+execute format('INSERT INTO %I values(%L, %L, %L);', NEW.entry_no || '_e', NEW.courseid, NEW.sem, NEW.year);
+
+ELSIF NEW.status='N' then
+
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'dean declined', NEW.courseid);
+
+END IF;
+
+return NEW;
+END;
+$$;
+
+CREATE TRIGGER to_dean_request
+AFTER UPDATE
+ON dean_h
+FOR EACH ROW
+EXECUTE PROCEDURE to_dean_request();
