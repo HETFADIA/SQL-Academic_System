@@ -220,6 +220,28 @@ CREATE TABLE time_table_slot(
     courseid varchar(7),
     slot integer
 );
+CREATE OR REPLACE FUNCTION enrollment_clashes(_courseid varchar(7))
+RETURNS integer
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+ret integer:=0;
+_slot integer;
+BEGIN
+-- select slot into ret from time_table where time_table.courseid=_courseid;
+-- (select "2019csb1084_e".courseid from "2019csb1084_e")
+-- execute format ('select %I.courseid from %I',current_user||'_e', current_user||'_e');
+for _slot in (select slot from time_table where time_table.courseid in (select postgres_e.courseid from postgres_e))  
+loop
+    if _slot in (select slot from time_table where time_table.courseid=_courseid) 
+    then 
+        raise exception 'this slot % clashes with other courses slots',_slot;
+        ret:=ret+1;
+    end if;
+end loop;
+return ret;
+END;
+$$;
 CREATE OR REPLACE FUNCTION check_enrollment()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
@@ -253,6 +275,7 @@ raise exception 'Course !!';
 end if;
 
 -- timetable
+select enrollment_clashes(NEW.courseid);
 
 --1.25 rule
 select lasttwosemcredit() into avg_last_two_sem_credit;

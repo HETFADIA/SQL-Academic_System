@@ -74,18 +74,20 @@ ret integer:=0;
 _slot integer;
 BEGIN
 -- select slot into ret from time_table where time_table.courseid=_courseid;
-for _slot in (select slot from time_table where time_table.courseid in (select "2019csb1084_e".courseid from "2019csb1084_e")) 
+-- (select "2019csb1084_e".courseid from "2019csb1084_e")
+-- execute format ('select %I.courseid from %I',current_user||'_e', current_user||'_e');
+for _slot in (select slot from time_table where time_table.courseid in (select postgres_e.courseid from postgres_e))  
 loop
     if _slot in (select slot from time_table where time_table.courseid=_courseid) 
     then 
         raise exception 'this slot % clashes with other courses slots',_slot;
         ret:=ret+1;
     end if;
-
 end loop;
-
 return ret;
 END;
 $$;
+
+
 select enrollment_clashes('ma101');
 -- select * from time_table;
