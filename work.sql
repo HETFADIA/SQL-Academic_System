@@ -228,10 +228,12 @@ DECLARE
 ret integer:=0;
 _slot integer;
 BEGIN
+-- execute format('select courseid from %I;',current_user||'_e');
 -- select slot into ret from time_table where time_table.courseid=_courseid;
 -- (select "2019csb1084_e".courseid from "2019csb1084_e")
 -- execute format ('select %I.courseid from %I',current_user||'_e', current_user||'_e');
-for _slot in (select slot from time_table where time_table.courseid in (select postgres_e.courseid from postgres_e))  
+-- (select postgres_e.courseid from postgres_e)
+for _slot in execute format('select slot from time_table where time_table.courseid in (select courseid from %I)',current_user||'_e')
 loop
     if _slot in (select slot from time_table where time_table.courseid=_courseid) 
     then 
@@ -242,6 +244,7 @@ end loop;
 return ret;
 END;
 $$;
+
 CREATE OR REPLACE FUNCTION check_enrollment()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL

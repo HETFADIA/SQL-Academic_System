@@ -39,6 +39,7 @@ insert into postgres_e values('cs303', 1, 2021);
 insert into postgres_e values('cs201', 1, 2020);
 insert into postgres_e values('cs202', 1, 2020);
 insert into postgres_e values('cs203', 1, 2020);
+insert into postgres_e values('cs204', 1, 2020);
 insert into postgres_e values('ge103', 1, 2019);
 insert into postgres_e values('ma101', 1, 2019);
 
