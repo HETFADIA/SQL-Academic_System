@@ -43,7 +43,7 @@ secid integer not null,
 sem integer not null,
 year integer not null,
 cg real,
-primary key(courseid, teacherid, secid)
+primary key(courseid, secid)
 );
 
 CREATE OR REPLACE FUNCTION create_course_sec_table()
@@ -132,28 +132,57 @@ sem integer not null,
 year integer not null,
 status varchar(50) not null,
 secid integer not null,
-entry_no varchar(10),
+entry_no varchar(12),
 primary key(courseid, entry_no)
 );
 
-create table "2019csb_h"{
-    
-}
+create table "2019csb_h"(
+courseid varchar(7),
+sem integer not null,
+year integer not null,
+status varchar(50) not null,
+secid integer not null,
+entry_no varchar(12),
+primary key(courseid, entry_no)
+);
 
--- create table batch_h(
+create table "2_h"(
+courseid varchar(7),
+sem integer not null,
+year integer not null,
+status varchar(50) not null,
+secid integer not null,
+entry_no varchar(12),
+primary key(courseid, entry_no)
+);
 
--- );
+create table "2019csb1119_h"(
+courseid varchar(7) primary key,
+sem integer not null,
+secid integer,
+year integer not null,
+status varchar(50) not null
+);
 
--- create table teacherid_h(
+CREATE TABLE "2019csb1119_e" (
+courseid varchar(7),
+sem integer not null,
+year integer not null,
+secid integer,
+primary key(courseid, sem, year)
+);
 
--- );
+
 
 CREATE OR REPLACE FUNCTION student_request()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
 AS $$
+DECLARE
+_teacherid integer;
 BEGIN
-execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  teacherid || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.secid, current_user);
+select teacherid into _teacherid from course_offerings where courseid = NEW.courseid and secid = NEW.secid;
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  _teacherid || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.secid, current_user);
 return NEW;
 END;
 $$;
@@ -161,22 +190,26 @@ $$;
 -- add request to instrcutor table
 CREATE TRIGGER student_request
 BEFORE INSERT
-ON postgres_h -- studentid_h
+ON "2019csb1119_h" -- studentid_h
 FOR EACH ROW
 EXECUTE PROCEDURE student_request();
+
+
 
 CREATE OR REPLACE FUNCTION teacher_request()
 RETURNS TRIGGER
 LANGUAGE PLPGSQL
 AS $$
 DECLARE
-batchadvisorid varchar(8);
+batchadvisor varchar(8);
 BEGIN
 
 if NEW.status = 'Y' then
 -- 'instructor approved'
+-- NEW.entry_no := '2019csb1119';
 batchadvisor := substr(NEW.entry_no, 1, 7);
-execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L);',  batchadvisor || '_h', NEW.courseid, NEW.sem, NEW.year,'NA', NEW.secid, NEW.entry_no);
+-- raise notice 'Value: %', NEW.entry_no;
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  batchadvisor || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.secid, NEW.entry_no);
 execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'pending batch advisor approval', NEW.courseid);
 
 ELSIF NEW.status = 'N' then
@@ -188,7 +221,7 @@ $$;
 
 CREATE TRIGGER teacher_request
 AFTER UPDATE
-ON teacherid_h -- change
+ON "2_h" -- change teacherid_h
 FOR EACH ROW
 EXECUTE PROCEDURE teacher_request();
 
@@ -200,7 +233,7 @@ LANGUAGE PLPGSQL
 AS $$
 DECLARE
 -- _teacherid integer;
-batchadvisorid varchar(7);
+batchadvisor varchar(7);
 
 BEGIN
 
@@ -209,7 +242,7 @@ if NEW.status = 'Y' then
 -- 'batch advisor approved '
 
 execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  'dean' || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.secid, NEW.entry_no);
-execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'pending dean approved', NEW.courseid);
+execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'pending dean approval', NEW.courseid);
 
 ELSIF NEW.status = 'N' THEN
 
@@ -222,7 +255,7 @@ $$;
 
 CREATE TRIGGER batch_advisor_request
 AFTER UPDATE
-ON batchadvisor_h -- change
+ON "2019csb_h" -- change batchadvisor_h
 FOR EACH ROW
 EXECUTE PROCEDURE batch_advisor_request();
 
@@ -239,7 +272,7 @@ if NEW.status='Y' then
 -- dean approved
 execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'enrolled', NEW.courseid);
 -- also insert this into enrollment table
-execute format('INSERT INTO %I values(%L, %L, %L);', NEW.entry_no || '_e', NEW.courseid, NEW.sem, NEW.year);
+execute format('INSERT INTO %I values(%L, %L, %L, %L);', NEW.entry_no || '_e', NEW.courseid, NEW.sem, NEW.year, NEW.secid);
 
 ELSIF NEW.status='N' then
 
@@ -256,3 +289,5 @@ AFTER UPDATE
 ON dean_h
 FOR EACH ROW
 EXECUTE PROCEDURE to_dean_request();
+
+------------------------------------------------------------------------------------------------------------
