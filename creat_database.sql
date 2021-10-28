@@ -54,6 +54,10 @@ BEGIN
 -- we will create course grade as well as course enrollment table (any one can view the enrollment table as in aims)
 EXECUTE format('CREATE TABLE %I (studentid varchar(12));', NEW.courseid || NEW.secid);
 EXECUTE format('CREATE TABLE %I (studentid varchar(12) primary key, grade integer);', NEW.courseid || NEW.secid || '_g');
+
+execute format('GRANT select, insert, update, delete on %I to %I;', NEW.courseid || NEW.secid || '_g', NEW.teacherid);
+execute format('GRANT select, insert on %I to %I;', NEW.courseid || NEW.secid, NEW.teacherid);
+
 RETURN NEW;
 END;
 $$;
@@ -126,53 +130,69 @@ $$;
 
 --------------------------------------------------------------------------------------------------------
 
-create table dean_h(
-courseid varchar(7),
-sem integer not null,
-year integer not null,
-status varchar(50) not null,
-secid integer not null,
-entry_no varchar(12),
-primary key(courseid, entry_no)
-);
+-- create table dean_h(
+-- courseid varchar(7),
+-- sem integer not null,
+-- year integer not null,
+-- status varchar(50) not null,
+-- ins_status varchar(50) not null,
+-- ba_status varchar(50) not null,
+-- secid integer not null,
+-- entry_no varchar(12),
+-- primary key(courseid, entry_no)
+-- );
 
-create table "2019csb_h"(
-courseid varchar(7),
-sem integer not null,
-year integer not null,
-status varchar(50) not null,
-secid integer not null,
-entry_no varchar(12),
-primary key(courseid, entry_no)
-);
+-- create table "2019csb_h"(
+-- courseid varchar(7),
+-- sem integer not null,
+-- year integer not null,
+-- status varchar(50) not null,
+-- ins_status varchar(50) not null,
+-- secid integer not null,
+-- entry_no varchar(12),
+-- primary key(courseid, entry_no)
+-- );
 
-create table "2_h"(
-courseid varchar(7),
-sem integer not null,
-year integer not null,
-status varchar(50) not null,
-secid integer not null,
-entry_no varchar(12),
-primary key(courseid, entry_no)
-);
+-- create table "2_h"(
+-- courseid varchar(7),
+-- sem integer not null,
+-- year integer not null,
+-- status varchar(50) not null,
+-- secid integer not null,
+-- entry_no varchar(12),
+-- primary key(courseid, entry_no)
+-- );
 
-create table "2019csb1119_h"(
-courseid varchar(7) primary key,
-sem integer not null,
-secid integer,
-year integer not null,
-status varchar(50) not null
-);
+-- create table "2019csb1119_h"(
+-- courseid varchar(7) primary key,
+-- sem integer not null,
+-- secid integer,
+-- year integer not null,
+-- status varchar(50) not null
+-- );
 
-CREATE TABLE "2019csb1119_e" (
-courseid varchar(7),
-sem integer not null,
-year integer not null,
-secid integer,
-primary key(courseid, sem, year)
-);
+-- CREATE TABLE "2019csb1119_e" (
+-- courseid varchar(7),
+-- sem integer not null,
+-- year integer not null,
+-- secid integer,
+-- primary key(courseid, sem, year)
+-- );
 
+------
 
+CREATE OR REPLACE FUNCTION make_ticket(courseid varchar(7), sem integer, secid integer, year integer)
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+-- DECLARE
+-- year_c integer;
+-- sem_c integer;
+BEGIN
+-- select yearsem() into (year_c, sem_c);
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  session_user || '_h', courseid, sem, secid, year, 'ticket pending');
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION student_request()
 RETURNS TRIGGER
@@ -181,40 +201,64 @@ AS $$
 DECLARE
 _teacherid integer;
 BEGIN
+if NEW.courseid not in (select course_offerings.courseid from course_offerings) then
+raise exception 'Invalid Course !!';
+end if;
+-- check every requirement of a course
+-- check 1.25 rule exceeded
+-- done
+return NEW;
+END;
+$$;
+
+create or replace function student_request_later()
+returns trigger
+LANGUAGE PLPGSQL SECURITY DEFINER
+AS $$
+DECLARE
+_teacherid integer;
+BEGIN
 select teacherid into _teacherid from course_offerings where courseid = NEW.courseid and secid = NEW.secid;
-execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  _teacherid || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.secid, current_user);
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  _teacherid || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.secid, session_user);
 return NEW;
 END;
 $$;
 
 -- add request to instrcutor table
-CREATE TRIGGER student_request
+CREATE TRIGGER student_request_before
 BEFORE INSERT
 ON "2019csb1119_h" -- studentid_h
 FOR EACH ROW
 EXECUTE PROCEDURE student_request();
 
+CREATE TRIGGER student_request_after
+AFTER INSERT
+ON "2019csb1119_h" -- studentid_h
+FOR EACH ROW
+EXECUTE PROCEDURE student_request_later();
 
+------------------------------------------
+
+CREATE OR REPLACE FUNCTION approve_teacher(studentid varchar(12), course varchar(7), approval varchar(3))
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+BEGIN
+execute format('UPDATE %I SET status=%L where entry_no=%L and courseid=%L;', session_user || '_h', approval, studentid, course);
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION teacher_request()
 RETURNS TRIGGER
-LANGUAGE PLPGSQL
+LANGUAGE PLPGSQL SECURITY DEFINER
 AS $$
 DECLARE
 batchadvisor varchar(8);
 BEGIN
 
-if NEW.status = 'Y' then
--- 'instructor approved'
--- NEW.entry_no := '2019csb1119';
 batchadvisor := substr(NEW.entry_no, 1, 7);
--- raise notice 'Value: %', NEW.entry_no;
-execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  batchadvisor || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.secid, NEW.entry_no);
-execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'pending batch advisor approval', NEW.courseid);
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L,%L);',  batchadvisor || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.status, NEW.secid, NEW.entry_no);
 
-ELSIF NEW.status = 'N' then
-execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'instructor declined', NEW.courseid);
-END if;
 return NEW;
 END;
 $$;
@@ -225,7 +269,16 @@ ON "2_h" -- change teacherid_h
 FOR EACH ROW
 EXECUTE PROCEDURE teacher_request();
 
+---------------------------------------
 
+CREATE OR REPLACE FUNCTION approve_ba(studentid varchar(12), course varchar(7), approval varchar(3))
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+BEGIN
+execute format('UPDATE %I SET status=%L where entry_no=%L and courseid=%L;', session_user || '_h', approval, studentid, course);
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION batch_advisor_request()
 RETURNS TRIGGER
@@ -234,21 +287,11 @@ AS $$
 DECLARE
 -- _teacherid integer;
 batchadvisor varchar(7);
-
 BEGIN
 
 batchadvisor := substr(NEW.entry_no, 1, 7);
-if NEW.status = 'Y' then
--- 'batch advisor approved '
+execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L,%L,%L);',  'dean' || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.ins_status, NEW.ba_status, NEW.secid, NEW.entry_no);
 
-execute format('INSERT INTO %I VALUES(%L,%L,%L,%L,%L,%L);',  'dean' || '_h', NEW.courseid, NEW.sem, NEW.year, 'NA', NEW.secid, NEW.entry_no);
-execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'pending dean approval', NEW.courseid);
-
-ELSIF NEW.status = 'N' THEN
-
-execute format('UPDATE %I SET status=%L WHERE courseid=%L;',  NEW.entry_no || '_h', 'batch advisor declined', NEW.courseid);
-
-END IF;
 return NEW;
 END;
 $$;
@@ -259,7 +302,16 @@ ON "2019csb_h" -- change batchadvisor_h
 FOR EACH ROW
 EXECUTE PROCEDURE batch_advisor_request();
 
+-------------------------------------------------
 
+CREATE OR REPLACE FUNCTION approve_dean(studentid varchar(12), course varchar(7), approval varchar(3))
+RETURNS void
+LANGUAGE PLPGSQL
+AS $$
+BEGIN
+execute format('UPDATE %I SET status=%L WHERE courseid=%L and studentid=%L;', 'dean_h', approval, course, studentid);
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION to_dean_request()
 RETURNS TRIGGER
