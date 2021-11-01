@@ -48,7 +48,58 @@ $$;
 -- select transcript_table1('2019csb1072');
 
 
-CREATE OR REPLACE FUNCTION load_grade_to_transcripts()
+-- CREATE OR REPLACE FUNCTION load_grade_to_transcripts()
+-- RETURNS void
+-- LANGUAGE plpgsql
+-- AS $$
+-- DECLARE
+-- ii record;
+-- jj record;
+-- credits_now integer;
+-- r record;
+-- keep_track integer;
+-- BEGIN
+-- /*
+--     Only used by academic section to update all the grades into the student transcript tables
+-- */
+-- for ii in (select * from course_offerings) loop
+-- select C from course_catalog where courseid = ii.courseid into credits_now;
+-- keep_track := 0;
+-- execute format('select count(*) from (select studentid from %I except select studentid from %I) as extraguys;', ii.courseid || ii.secid || '_g', ii.courseid || ii.secid) into keep_track;
+-- continue when keep_track > 0;
+
+-- for jj in execute format('select * from %I;', ii.courseid || ii.secid || '_g') loop
+-- execute format('insert into %I values(%L, %L, %L, %L, %L)', jj.studentid || '_t', ii.courseid, credits_now, ii.sem, ii.year, jj.grade);
+-- end loop;
+-- end loop;
+-- END;
+-- $$;
+
+create  table cs3011_g(
+    studentid varchar(12),
+    courseid varchar(12),
+    credits real,
+    sem int,
+    year int,
+    grade int
+    );
+
+create table cs3011(
+    studentid varchar(12),
+    courseid varchar(12),
+    credits real,
+    sem int,
+    year int,
+    grade int
+    );
+
+insert into cs3011_g values('2019csb1072','cs301',3.0,1,2019,4);
+insert into cs3011 values('2019csb1072','cs301',3.0,1,2019,4);
+select * from cs3011_g;
+select * from cs3011;
+select * from cs3011_g except select * from cs3011;
+
+CREATE OR REPLACE FUNCTION load_grade_to_transcripts(_courseid varchar(7),_secid integer,_year int,_sem int)
 RETURNS void
 LANGUAGE plpgsql
 AS $$
@@ -62,15 +113,22 @@ BEGIN
 /*
     Only used by academic section to update all the grades into the student transcript tables
 */
-for ii in (select * from course_offerings) loop
-select C from course_catalog where courseid = ii.courseid into credits_now;
-keep_track := 0;
-execute format('select count(*) from (select studentid from %I except select studentid from %I) as extraguys;', ii.courseid || ii.secid || '_g', ii.courseid || ii.secid) into keep_track;
-continue when keep_track > 0;
 
-for jj in execute format('select * from %I;', ii.courseid || ii.secid || '_g') loop
-execute format('insert into %I values(%L, %L, %L, %L, %L)', jj.studentid || '_t', ii.courseid, credits_now, ii.sem, ii.year, jj.grade);
+select C from course_catalog  where courseid = _courseid into credits_now;
+keep_track := 0;
+execute format('select count(*) from (select studentid from %I except select studentid from %I) as extraguys;', _courseid || _secid || '_g', _courseid || _secid) into keep_track;
+
+if(keep_track>0) then
+    raise exception '%','The grades have not been updated yet';
+end if;
+
+
+for jj in execute format('select * from %I;', _courseid || _secid || '_g') loop
+execute format('insert into %I values(%L, %L, %L, %L, %L)', jj.studentid || '_t', _courseid, credits_now, _sem, _year, jj.grade);
 end loop;
-end loop;
+
 END;
 $$;
+
+
+select load_grade_to_transcripts('cs301',1,1,2021);
