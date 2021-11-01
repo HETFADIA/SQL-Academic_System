@@ -51,3 +51,18 @@ for i in (select current_user) loop
     RAISE NOTICE '%', current_user;
 end loop;
 END $$;
+
+
+
+DO $$ 
+DECLARE
+studentid varchar(12);
+i record;
+BEGIN 
+studentid='2019csb1072';
+for i in execute format('select courseid,credits,sem,year,grade from %I',studentid||'_t')
+loop 
+raise notice '%',i;
+end loop;
+
+END $$;
