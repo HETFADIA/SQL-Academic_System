@@ -45,3 +45,32 @@ return query execute format('select courseid,credits,sem,year,grade from %I',stu
 END;
 $$;
 -- select transcript_table('2019csb1072');
+-- select transcript_table1('2019csb1072');
+
+
+CREATE OR REPLACE FUNCTION load_grade_to_transcripts()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+ii record;
+jj record;
+credits_now integer;
+r record;
+keep_track integer;
+BEGIN
+/*
+    Only used by academic section to update all the grades into the student transcript tables
+*/
+for ii in (select * from course_offerings) loop
+select C from course_catalog where courseid = ii.courseid into credits_now;
+keep_track := 0;
+execute format('select count(*) from (select studentid from %I except select studentid from %I) as extraguys;', ii.courseid || ii.secid || '_g', ii.courseid || ii.secid) into keep_track;
+continue when keep_track > 0;
+
+for jj in execute format('select * from %I;', ii.courseid || ii.secid || '_g') loop
+execute format('insert into %I values(%L, %L, %L, %L, %L)', jj.studentid || '_t', ii.courseid, credits_now, ii.sem, ii.year, jj.grade);
+end loop;
+end loop;
+END;
+$$;
