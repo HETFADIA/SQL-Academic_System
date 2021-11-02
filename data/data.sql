@@ -29,21 +29,35 @@
 -- insert into student_info values('2019csb1063', 'Nice Guy', 'CSE');
 -- insert into student_info values('2019meb1214', 'Another Guy', 'ME');
 
--- create table "2019csb1072_t" (
---     courseid varchar(7) primary key,
---     credits real not null,
---     sem integer not null,
---     year integer not null,
---     grade integer not null
---     );
+create table "2019csb1072_t" (
+    courseid varchar(7) primary key,
+    credits real not null,
+    sem integer not null,
+    year integer not null,
+    grade integer not null
+    );
+create table "2019csb1063_t" (
+    courseid varchar(7) primary key,
+    credits real not null,
+    sem integer not null,
+    year integer not null,
+    grade integer not null
+    );
 
--- create table "2019csb1072_e"(
---     courseid varchar(7),
---     sem integer not null,
---     year integer not null,
---     secid integer,
---     primary key(courseid, sem, year)
---     );
+create table "2019csb1072_e"(
+    courseid varchar(7),
+    sem integer not null,
+    year integer not null,
+    secid integer,
+    primary key(courseid, sem, year)
+    );
+create table "2019csb1063_e"(
+    courseid varchar(7),
+    sem integer not null,
+    year integer not null,
+    secid integer,
+    primary key(courseid, sem, year)
+    );
 
 insert into "2019csb1072_t" values ('ma101', 3, 1, 2019, 7);
 insert into "2019csb1072_t" values ('ge103', 4.5, 1, 2019, 6);

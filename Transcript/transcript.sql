@@ -132,3 +132,67 @@ $$;
 
 
 select load_grade_to_transcripts('cs301',1,1,2021);
+
+CREATE OR REPLACE FUNCTION semsg(studentid varchar(12),sem_a integer, year_a integer)
+RETURNS real
+LANGUAGE PLPGSQL
+AS $$
+DECLARE
+sg real;
+num real;
+den real;
+BEGIN
+-- EXECUTE format('select count(*) from %I where coach like %L', 'empty_seats_'||train_id||to_char(date,'_yyyy_mm_dd'), coach_type ||'%') into available;
+EXECUTE format('select sum(grade * credits) from %I where sem=%L and year=%L;', studentid||'_t', sem_a, year_a) into num;
+EXECUTE format('select sum(credits) from %I where sem=%L and year=%L;', studentid||'_t', sem_a, year_a) into den;
+sg := num / den;
+return sg;
+-- select sum(grade * credit) into num from current_user+'_t'
+END;
+$$;
+
+
+CREATE OR REPLACE FUNCTION generate_transcripts(studentid varchar(12),_sem integer, _year integer)
+RETURNS table(
+    courseid varchar(12),
+    credits real,
+    sem int,
+    year int,
+    grade int
+    )
+LANGUAGE plpgsql
+AS $$
+DECLARE
+i record;
+ret real;
+sum_c real;
+RT record;
+BEGIN
+raise notice '% %',_sem,_year;
+if(_sem=0 and _year=0) then 
+        ret := 0.0;
+        sum_c := 0.0;
+        -- grade < 4.0 is fail and not counted in CG
+        for RT in execute format('select * from %I where grade > 4.0', studentid || '_t') loop
+        sum_c := sum_c + RT.credits;
+        ret := ret + RT.credits * RT.grade;
+        end loop;
+
+        ret := ret / sum_c;
+
+        raise notice 'The current CGPA of % is %', studentid, ret;
+        return query execute format('select courseid,credits,sem,year,grade from %I',studentid||'_t');
+else
+        ret := semsg(studentid,_sem, _year);
+        raise notice 'The SG of % in % sem and % year is %', studentid, _sem , _year, ret;
+        return query execute format('select courseid,credits,sem,year,grade from %I where sem=%L and year=%L',studentid||'_t',_sem,_year);
+
+end if;
+
+
+END;
+$$;
+
+
+select * from generate_transcripts('2019csb1063',1,2019);
+select * from generate_transcripts('2019csb1063',0,0);
