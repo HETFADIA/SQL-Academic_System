@@ -184,28 +184,28 @@ insert into "2019mmb1372_t" values ('ns101', 1, 1, 2019, 5);
 
 insert into "2019mmb1372_t" values ('cs101', 3, 2, 2019, 5);
 insert into "2019mmb1372_t" values ('ma102', 3, 2, 2019, 4);
-insert into "2019mmb1372_t" values ('ma102', 3, 2, 2019, 5);
-insert into "2019mmb1372_t" values ('ns102', 1, 2, 2019, 5);
+insert into "2019mmb1372_t" values ('ma102', 3, 2, 2019, 4);
+insert into "2019mmb1372_t" values ('ns102', 1, 2, 2019, 4);
 
 insert into "2019mmb1372_t" values ('cs201', 4, 1, 2020, 4);
-insert into "2019mmb1372_t" values ('cs203', 4, 1, 2020, 5);
+insert into "2019mmb1372_t" values ('cs203', 4, 1, 2020, 4);
 
 insert into "2019mmb1372_t" values ('cs202', 4, 2, 2020, 5);
-insert into "2019mmb1372_t" values ('cs204', 4, 2, 2020, 6);
+insert into "2019mmb1372_t" values ('cs204', 4, 2, 2020, 4);
 
 
 
 
-insert into "2019mcb1141_t" values ('ma101', 3, 1, 2019, 6);
+insert into "2019mcb1141_t" values ('ma101', 3, 1, 2019, 4);
 insert into "2019mcb1141_t" values ('ge103', 4.5, 1, 2019, 4);
 insert into "2019mcb1141_t" values ('ns101', 1, 1, 2019, 5);
 
 insert into "2019mcb1141_t" values ('cs101', 3, 2, 2019, 4);
+insert into "2019mcb1141_t" values ('ma102', 3, 2, 2019, 4);
 insert into "2019mcb1141_t" values ('ma102', 3, 2, 2019, 5);
-insert into "2019mcb1141_t" values ('ma102', 3, 2, 2019, 6);
 insert into "2019mcb1141_t" values ('ns102', 1, 2, 2019, 4);
 
-insert into "2019mcb1141_t" values ('cs201', 4, 1, 2020, 4);
+insert into "2019mcb1141_t" values ('cs201', 4, 1, 2020, 5);
 insert into "2019mcb1141_t" values ('cs203', 4, 1, 2020, 4);
 
 insert into "2019mcb1141_t" values ('cs202', 4, 2, 2020, 4);
@@ -242,3 +242,7 @@ insert into "2019ceb1319_t" values ('cs203', 4, 1, 2020, 7);
 
 insert into "2019ceb1319_t" values ('cs202', 4, 2, 2020, 8);
 insert into "2019ceb1319_t" values ('cs204', 4, 2, 2020, 7);
+
+
+-- select generate_transcripts('2019csb1072',0, 0);
+-- select generate_transcripts('2019mmb1372',0, 0);
