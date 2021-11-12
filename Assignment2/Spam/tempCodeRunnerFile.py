@@ -1,0 +1,1 @@
+python movie.py > list.sql

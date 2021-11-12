@@ -1,0 +1,2 @@
+psql -h localhost -U postgres -d niced -q -f C:\Users\Hp\Downloads\CS303-2019CSB1119-4\a.sql
+https://www.postgresqltutorial.com/postgresql-foreign-key/
